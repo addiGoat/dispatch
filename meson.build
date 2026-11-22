@@ -1,2 +1,2 @@
-project('tutorial', 'cpp')
-executable('demo', 'main.cpp')
+project('dispatch', 'cpp')
+executable('dispatch', 'main.cpp')
