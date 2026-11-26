@@ -197,6 +197,8 @@ public:
         // the output pipe.
         output_pipe.close_write_end();
 
+        posix_spawn_file_actions_destroy(&file_actions);
+
         return true;
     }
 
