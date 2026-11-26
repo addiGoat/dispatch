@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <vector>
@@ -56,13 +57,58 @@ void FormatActions(std::vector<Action> *actions) {
 }
 
 
-// do this sometime numbnuts
-class FileDescriptor {
+class PipeHandle {
 public:
-    FileDescriptor();
+    ~PipeHandle() { 
+        close_read_end();
+        close_write_end();
+    };
+
+    void error(std::string content) {
+        std::cerr << "[ERR] - " << content << "\n";
+    }
+
+    bool init() {
+        if (pipe(filedes) == -1) {
+            error("Pipe creation failed");
+            return false;
+        }
+
+        return true;
+    }
+
+    int get_read_end() const { return filedes[0]; }
+    int get_write_end() const { return filedes[1]; }
+
+    void close_read_end() {
+        if (get_read_end() == -1) {
+            std::cout << "Cannot close uninitilized file descriptor\n";
+            return;
+        }
+
+        if (close(filedes[0]) == -1) {
+            error("Couldn't close read end");
+            return;
+        }
+        filedes[0] = -1;
+    }
+
+    void close_write_end() {
+        if (get_write_end() == -1) {
+            std::cout << "Cannot close uninitilized file descriptor\n";
+            return;
+        }
+
+        if (close(filedes[1]) == -1) {
+            error("Couldn't close write end");
+            return;
+        }
+        filedes[1] = -1;
+        
+    }
 
 private:
-        
+    int filedes[2] = {-1, -1};
 };
 
 
@@ -80,35 +126,40 @@ public:
         }
     }
 
+    bool InitFileActions() {
+
+
+        return true;
+    };
+
     bool InitializeProcess() {
-
-        // pipe[0] is the end you READ data FROM
-        // pipe[1] is the end you WRITE data INTO
-        int input[2], output[2];
-
-        if (pipe(input) == -1) {
+        if (!input_pipe.init()) {
             error("Input pipe couldn't be created");
             return false;
         }
 
-        if (pipe(output) == -1) {
+        if (!output_pipe.init()) {
             error("Output pipe couldn't be created");
             return false;
         }
 
-        // need to add more robust error handling, instead of having to 
-        // close all file descriptors manually every time
         if (posix_spawn_file_actions_init(&file_actions) != 0) {
             error("file actions initialization failed");
             return false;
         }
 
-        if (posix_spawn_file_actions_adddup2(&file_actions, input[0], 0) != 0) {
+        if (posix_spawn_file_actions_adddup2(
+                    &file_actions, 
+                    input_pipe.get_read_end(), 
+                    0) != 0) {
             error("failed to duplicate input pipe");
             return false;
         }
 
-        if (posix_spawn_file_actions_adddup2(&file_actions, output[1], 1) != 0) {
+        if (posix_spawn_file_actions_adddup2(
+                    &file_actions, 
+                    output_pipe.get_read_end(), 
+                    1) != 0) {
             error("failed to duplicate output pipe");
             return false;
         }
@@ -118,6 +169,7 @@ public:
         for (auto& arg : args) {
             cargs.push_back(arg.data());
         }
+        cargs.push_back(nullptr);
 
         posix_spawnp(
                 &pid,
@@ -126,20 +178,16 @@ public:
                 nullptr,
                 cargs.data(),
                 environ
-                );
+        );
 
 
         // this parent process does not need to read
         // from the input pipe, so we can close it.
-        // then we assign the input to a non-array value,
-        // for easy use later on
-        close(input[0]);
-        in_pipe = input[1];
+        input_pipe.close_read_end();
 
         // it also does not need to write into 
         // the output pipe.
-        close(output[1]);
-        out_pipe = output[0];
+        output_pipe.close_write_end();
 
         return true;
     }
@@ -148,15 +196,13 @@ private:
     pid_t pid = 0;
     posix_spawn_file_actions_t file_actions;
     std::vector<std::string> rofi_action_names;
-    int in_pipe, out_pipe;
+    PipeHandle input_pipe, output_pipe;
 
     inline static std::vector<std::string> args = {
         "-dmenu",
         "-format",
-        "i",
-        nullptr
+        "i"
     };
-
 };
 
 int main() {
@@ -167,19 +213,4 @@ int main() {
 
     picker.PrintActions();
     picker.InitializeProcess();
-    
-    // for (const auto& action : action_list) {
-    //     std::cout << "Name: " << action.name << ", Exec: " << action.executable << "\n";  
-    // }
-    std::vector<std::string> args = {
-        "-dmenu",
-        "-format",
-        "i",
-        nullptr
-    };
-    std::vector<char*> cargs;
-    for (std::string& arg : args) {
-        cargs.push_back(arg.data());
-    }
-    cargs.push_back(nullptr);
 }
