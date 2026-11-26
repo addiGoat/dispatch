@@ -59,7 +59,9 @@ void FormatActions(std::vector<Action> *actions) {
 
 class PipeHandle {
 public:
-    PipeHandle();
+    PipeHandle() {
+
+    }
 
     ~PipeHandle() { 
         close_read_end();
