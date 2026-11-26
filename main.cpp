@@ -59,16 +59,26 @@ void FormatActions(std::vector<Action> *actions) {
 
 class PipeHandle {
 public:
+    PipeHandle();
+
     ~PipeHandle() { 
         close_read_end();
         close_write_end();
     };
+
+    PipeHandle(const PipeHandle&) = delete;
+    PipeHandle& operator=(const PipeHandle&) = delete;
 
     void error(std::string content) {
         std::cerr << "[ERR] - " << content << "\n";
     }
 
     bool init() {
+        if (get_write_end() != -1 || get_read_end() != -1) {
+            error("Duplicate initialization, file descriptors already in use.");
+            return false;
+        }
+
         if (pipe(filedes) == -1) {
             error("Pipe creation failed");
             return false;
@@ -82,7 +92,6 @@ public:
 
     void close_read_end() {
         if (get_read_end() == -1) {
-            std::cout << "Cannot close uninitilized file descriptor\n";
             return;
         }
 
@@ -95,7 +104,6 @@ public:
 
     void close_write_end() {
         if (get_write_end() == -1) {
-            std::cout << "Cannot close uninitilized file descriptor\n";
             return;
         }
 
@@ -158,7 +166,7 @@ public:
 
         if (posix_spawn_file_actions_adddup2(
                     &file_actions, 
-                    output_pipe.get_read_end(), 
+                    output_pipe.get_write_end(), 
                     1) != 0) {
             error("failed to duplicate output pipe");
             return false;
