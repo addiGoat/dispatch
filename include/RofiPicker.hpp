@@ -26,19 +26,19 @@ public:
     RofiPicker(const std::vector<Action>& actions);
 
     void PrintActions() const;
-    bool InitFileActions();
     bool InitializeProcess();
 
-
 private:
-    pid_t pid = 0;
-    posix_spawn_file_actions_t file_actions;
     std::vector<std::string> rofi_action_names;
-    PipeHandle input_pipe, output_pipe;
-
     inline static std::vector<std::string> args = {
         "-dmenu",
         "-format",
         "i"
     };
+
+    PipeHandle input_pipe, output_pipe;
+    pid_t pid = 0;
+    posix_spawn_file_actions_t file_actions;
+
+    bool InitFileActions();
 };

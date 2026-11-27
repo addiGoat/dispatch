@@ -19,22 +19,6 @@ void RofiPicker::PrintActions() const {
 }
 
 bool RofiPicker::InitFileActions() {
-
-
-    return true;
-};
-
-bool RofiPicker::InitializeProcess() {
-    if (!input_pipe.init()) {
-        error("Input pipe couldn't be created");
-        return false;
-    }
-
-    if (!output_pipe.init()) {
-        error("Output pipe couldn't be created");
-        return false;
-    }
-
     if (posix_spawn_file_actions_init(&file_actions) != 0) {
         error("file actions initialization failed");
         return false;
@@ -55,6 +39,24 @@ bool RofiPicker::InitializeProcess() {
         error("failed to duplicate output pipe");
         return false;
     }
+
+    return true;
+};
+
+bool RofiPicker::InitializeProcess() {
+    if (!input_pipe.init()) {
+        error("Input pipe couldn't be created");
+        return false;
+    }
+
+    if (!output_pipe.init()) {
+        error("Output pipe couldn't be created");
+        return false;
+    }
+
+    if (!InitFileActions())
+        return false;
+
 
 
     std::vector<char*> cargs;
