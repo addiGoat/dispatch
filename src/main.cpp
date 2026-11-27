@@ -41,4 +41,5 @@ int main() {
 
     picker.PrintActions();
     picker.InitializeProcess();
+    picker.RunPicker();
 }

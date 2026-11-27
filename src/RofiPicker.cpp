@@ -56,25 +56,7 @@ bool RofiPicker::InitializeProcess() {
 
     if (!InitFileActions())
         return false;
-
-
-
-    std::vector<char*> cargs;
-    for (auto& arg : args) {
-        cargs.push_back(arg.data());
-    }
-    cargs.push_back(nullptr);
-
-    posix_spawnp(
-        &pid,
-        "rofi",
-        &file_actions,
-        nullptr,
-        cargs.data(),
-        environ
-    );
-
-
+    
     // this parent process does not need to read
     // from the input pipe, so we can close it.
     input_pipe.close_read_end();
@@ -83,7 +65,20 @@ bool RofiPicker::InitializeProcess() {
     // the output pipe.
     output_pipe.close_write_end();
 
-    posix_spawn_file_actions_destroy(&file_actions);
-
     return true;
 }
+
+int RofiPicker::RunPicker() {
+    posix_spawnp(
+        &pid,
+        "rofi",
+        &file_actions,
+        nullptr,
+        args,
+        environ
+    );
+
+    posix_spawn_file_actions_destroy(&file_actions);
+    return -1;
+}
+
